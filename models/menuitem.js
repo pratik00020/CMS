@@ -1,15 +1,16 @@
 const mongoose = require('mongoose');
 
 const menuItemSchema = new mongoose.Schema({
-    menu_cal_ID: {type: Schema.types.ObjectId, ref:'MenuCalendar', required: true},
-    timing_type: { type: String, enum:['B', 'L', 'S'], required: true },
-    veg_nonVeg: { type:String, enum: ['V', 'N'], required: true},
-    item_categID: { type: Number, required: true},
-    item_Title: {type: String, required: true},
-    enteredBy: {type: String, required: true},
-    enteredAt: {type: Date, required: true, default:Date.now}
+  menu_itemID: { type: Number, required: true, unique: true, ref: 'changedmenu' }, // Unique identifier for each menu item
+  menu_cal_ID: { type: Number, required: true, ref: 'menucalendar' }, // Foreign key reference to M_Menu_Calendar
+  timing_type: { type: String, required: true }, // B for Breakfast, L for Lunch, S for Snacks
+  veg_nonVeg: { type: String, required: true }, // V for Veg, N for Non-Veg
+  item_categID: { type: Number, required: true, ref: 'M_Item_Category' }, // Foreign key reference to M_Item_Category
+  item_Title: { type: String, required: true }, // Title of the menu item
+  enteredBy: { type: String, required: true }, // User who entered the item
+  enteredAt: { type: Date, default: Date.now } // Timestamp of when the item was entered
+});
 
-}, {timestamps:true});
+const menuitem = mongoose.model('menuitem', menuItemSchema);
 
-const MenuItem = mongoose.model('MenuItem', menuItemSchema);
-module.exports = MenuItem; 
+module.exports = menuitem;

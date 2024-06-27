@@ -6,6 +6,10 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    Name: {
+        type: String,
+        required: true
+    },
     userType: {
         type: String,
         required: true,
@@ -20,10 +24,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    Name: {
-        type: String,
-        required: true
-    },
+   
     enteredBy: {
         type: String,
         required: true

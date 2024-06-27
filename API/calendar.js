@@ -2,101 +2,99 @@ const express = require('express');
 const router = express.Router();
 const MenuCalendar = require('../models/menucalendar'); // Importing the MenuCalendar model
 
-// Basic APIs
-
-// POST /api/calendar
-// This route handles the creation of a new calendar entry.
-router.post('/CalEntry', async (req, res) => {
-    console.log('POST /CalEntry endpoint hit');
-    const { cal_date, enteredBy } = req.body;
-    console.log('Request body:', req.body);
-
-    if (!cal_date) {
-        return res.status(400).json({ error: 'cal_date is required' });
-    }
-    if (!enteredBy) {
-        return res.status(400).json({ error: 'enteredBy is required' });
-    }
-
-    const [day, month, year] = cal_date.split('/');
-    const formattedDate = `${day}-${month}-${year}`;
-    console.log(formattedDate)
-    if (isNaN(formattedDate)) {
-        return res.status(400).json({ error: 'Invalid date format' });
-    }
-
-    const newCalendarEntry = new MenuCalendar({
-        Cal_date: formattedDate,
-        enteredBy,
-        enteredAt: new Date()
-    });
-
+// Helper function to parse date
+const parseDate = (dateString) => {
+    const date = new Date(dateString);
+    return isNaN(date) ? null : date;
+  };
+  
+  // Create a new calendar entry
+  router.post('/postcal', async (req, res) => {
+        try {
+          const { cal_ID, cal_date, enteredBy, enteredAt } = req.body;
+      
+          if (!cal_ID) {
+            return res.status(400).json({ message: 'cal_ID is required' });
+          }
+      
+          const parsedCalDate = parseDate(cal_date);
+          const parsedEnteredAt = parseDate(enteredAt);
+      
+          if (!parsedCalDate || !parsedEnteredAt) {
+            return res.status(400).json({ message: 'Invalid date format' });
+          }
+      
+          const newEntry = new MenuCalendar({
+            cal_ID,
+            cal_date: parsedCalDate,
+            enteredBy,
+            enteredAt: parsedEnteredAt,
+          });
+      
+          const savedEntry = await newEntry.save();
+          res.status(201).json(savedEntry);
+        } catch (err) {
+          res.status(400).json({ message: err.message });
+        }
+      });
+  
+  // Get all calendar entries
+  router.get('/', async (req, res) => {
     try {
-        const savedCalendarEntry = await newCalendarEntry.save();
-        res.status(201).json(savedCalendarEntry);
-    } catch (error) {
-        console.error('Error saving calendar entry:', error);
-        res.status(500).json({ error: error.message });
+      const entries = await MenuCalendar.find();
+      res.json(entries);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
     }
-});
-
-// GET /api/calendar
-// This route retrieves all calendar entries from the database.
-router.get('/getcal', async (req, res) => {
+  });
+  
+  // Update a calendar entry by ID
+  router.put('/:id', getMenuCalendarEntry, async (req, res) => {
+    if (req.body.cal_ID != null) {
+      res.entry.cal_ID = req.body.cal_ID;
+    }
+    if (req.body.cal_date != null) {
+      res.entry.cal_date = req.body.cal_date;
+    }
+    if (req.body.enteredBy != null) {
+      res.entry.enteredBy = req.body.enteredBy;
+    }
+    if (req.body.enteredAt != null) {
+      res.entry.enteredAt = req.body.enteredAt;
+    }
+  
     try {
-        // Finding all entries in the MenuCalendar collection
-        const calendarEntries = await MenuCalendar.find();
-        // Responding with the list of calendar entries
-        res.status(200).json(calendarEntries);
-    } catch (error) {
-        // Handling any errors that occur during retrieval
-        res.status(500).json({ error: error.message });
+      const updatedEntry = await res.entry.save();
+      res.json(updatedEntry);
+    } catch (err) {
+      res.status(400).json({ message: err.message });
     }
-});
-
-// GET /api/calendar/:id
-// This route retrieves a specific calendar entry by its ID.
-router.get('/GetCalID', async (req, res) => {
+  });
+  
+  // Delete a calendar entry by ID
+  router.delete('/:id', getMenuCalendarEntry, async (req, res) => {
     try {
-        // Finding a calendar entry by ID
-        const calendarEntry = await MenuCalendar.findById(req.params.id);
-        if (!calendarEntry) return res.status(404).json({ error: 'Calendar entry not found' });
-        // Responding with the found calendar entry
-        res.status(200).json(calendarEntry);
-    } catch (error) {
-        // Handling any errors that occur during retrieval
-        res.status(500).json({ error: error.message });
+      await res.entry.remove();
+      res.json({ message: 'Deleted MenuCalendar entry' });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
     }
-});
-
-// PUT /api/calendar/:id
-// This route updates a specific calendar entry by its ID.
-router.put('/PutCalID', async (req, res) => {
+  });
+  
+  // Middleware to get a MenuCalendar entry by ID
+  async function getMenuCalendarEntry(req, res, next) {
+    let entry;
     try {
-        // Finding a calendar entry by ID and updating it with the provided data
-        const calendarEntry = await MenuCalendar.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-        if (!calendarEntry) return res.status(404).json({ error: 'Calendar entry not found' });
-        // Responding with the updated calendar entry
-        res.status(200).json(calendarEntry);
-    } catch (error) {
-        // Handling any errors that occur during update
-        res.status(500).json({ error: error.message });
+      entry = await MenuCalendar.findOne({ cal_ID: req.params.id });
+      if (entry == null) {
+        return res.status(404).json({ message: 'Cannot find entry' });
+      }
+    } catch (err) {
+      return res.status(500).json({ message: err.message });
     }
-});
-
-// DELETE /api/calendar/:id
-// This route deletes a specific calendar entry by its ID.
-router.delete('/DelCalID', async (req, res) => {
-    try {
-        // Finding a calendar entry by ID and deleting it
-        const calendarEntry = await MenuCalendar.findByIdAndDelete(req.params.id);
-        if (!calendarEntry) return res.status(404).json({ error: 'Calendar entry not found' });
-        // Responding with a success message
-        res.status(200).json({ message: 'Calendar entry deleted' });
-    } catch (error) {
-        // Handling any errors that occur during deletion
-        res.status(500).json({ error: error.message });
-    }
-});
-
-module.exports = router; // Exporting the router to be used in the main server file
+  
+    res.entry = entry;
+    next();
+  }
+  
+  module.exports = router;
